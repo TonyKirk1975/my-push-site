@@ -7,55 +7,56 @@
 </head>
 <body style="font-family: Arial, sans-serif; text-align: center; padding: 40px 20px;">
 
-    <h1>Push Notification Tester</h1>
+    <h1>Mobile Push Tester</h1>
     <p>Step 1: Grant permission. Step 2: Trigger the test alert.</p>
     
-    <!-- Button 1: Request Permission -->
-    <button id="enable-push" style="padding: 12px 24px; font-size: 16px; margin: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+    <button id="enable-push" style="padding: 12px 24px; font-size: 16px; margin: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px;">
         1. Enable Notifications
     </button>
 
-    <!-- Button 2: Trigger Local Alert -->
-    <button id="send-test" style="padding: 12px 24px; font-size: 16px; margin: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+    <button id="send-test" style="padding: 12px 24px; font-size: 16px; margin: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px;">
         2. Send Test Notification
     </button>
 
     <script>
         const pushButton = document.getElementById('enable-push');
         const testButton = document.getElementById('send-test');
+        let swRegistration = null;
+
+        // Automatically register the background service worker when page loads
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/my-push-site/sw.js') // Make sure this matches your repo name!
+            .then(reg => {
+                swRegistration = reg;
+                console.log('Service Worker Registered');
+            }).catch(err => console.log('SW Registration Failed', err));
+        }
 
         // Step 1: Request permission
         pushButton.addEventListener('click', async () => {
-            if (!('Notification' in window)) {
-                alert('This browser does not support notifications.');
-                return;
-            }
-
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
-                alert('Permission granted! You can now send a test.');
+                alert('Permission granted!');
             } else {
                 alert('Permission denied.');
             }
         });
 
-        // Step 2: Trigger the local notification
+        // Step 2: Send message to the background worker to show the notification
         testButton.addEventListener('click', () => {
             if (Notification.permission !== 'granted') {
                 alert('Please click "1. Enable Notifications" first!');
                 return;
             }
 
-            // Configuration options for the notification popup
-            const options = {
-                body: 'Hello from your GitHub website! Your phone is configured correctly.',
-                icon: 'https://githubassets.com', // Temporary GitHub icon
-                vibrate:, // Vibration pattern for mobile devices
-                tag: 'test-notification' // Prevents duplicate notifications
-            };
-
-            // Trigger the native device notification
-            new Notification('It Works! 🎉', options);
+            if (navigator.serviceWorker.controller) {
+                // Send a message to sw.js telling it to fire the notification
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'TEST_NOTIFICATION'
+                });
+            } else {
+                alert('Service worker not active yet. Try refreshing the page!');
+            }
         });
     </script>
 </body>
