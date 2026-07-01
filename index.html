@@ -3,60 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Push Notification Site</title>
+    <title>Get My Subscription</title>
 </head>
-<body style="font-family: Arial, sans-serif; text-align: center; padding: 40px 20px;">
-
-    <h1>Mobile Push Tester</h1>
-    <p>Step 1: Grant permission. Step 2: Trigger the test alert.</p>
+<body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+    <h1>Custom Backend Registration</h1>
+    <button id="subscribe-btn" style="padding: 12px 24px; font-size: 16px;">Get My Phone's Address</button>
     
-    <button id="enable-push" style="padding: 12px 24px; font-size: 16px; margin: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px;">
-        1. Enable Notifications
-    </button>
-
-    <button id="send-test" style="padding: 12px 24px; font-size: 16px; margin: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px;">
-        2. Send Test Notification
-    </button>
+    <h3>Copy this output completely:</h3>
+    <textarea id="output" style="width: 90%; height: 200px; font-family: monospace;" readonly placeholder="Your subscription token will appear here..."></textarea>
 
     <script>
-        const pushButton = document.getElementById('enable-push');
-        const testButton = document.getElementById('send-test');
-        let swRegistration = null;
+        const btn = document.getElementById('subscribe-btn');
+        const output = document.getElementById('output');
 
-        // Automatically register the background service worker when page loads
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/my-push-site/sw.js') // Make sure this matches your repo name!
-            .then(reg => {
-                swRegistration = reg;
-                console.log('Service Worker Registered');
-            }).catch(err => console.log('SW Registration Failed', err));
+        // Helper to convert VAPID key format
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
         }
 
-        // Step 1: Request permission
-        pushButton.addEventListener('click', async () => {
+        btn.addEventListener('click', async () => {
             const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                alert('Permission granted!');
-            } else {
-                alert('Permission denied.');
-            }
-        });
+            if (permission !== 'granted') return alert('Allow permissions first!');
 
-        // Step 2: Send message to the background worker to show the notification
-        testButton.addEventListener('click', () => {
-            if (Notification.permission !== 'granted') {
-                alert('Please click "1. Enable Notifications" first!');
-                return;
-            }
+            const reg = await navigator.serviceWorker.ready;
+            
+            // Replace with your real generated public key
+            const publicKey = 'BNZ1CPPeOb8gNw_VOrRtvTiFyhPVpKsZaF0A8TPygCIxaK_RfwhIEc7WdosH0xvL9t3bkRNBg7jGA2UUbYTGDL3';
+            
+            const subscription = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicKey)
+            });
 
-            if (navigator.serviceWorker.controller) {
-                // Send a message to sw.js telling it to fire the notification
-                navigator.serviceWorker.controller.postMessage({
-                    type: 'TEST_NOTIFICATION'
-                });
-            } else {
-                alert('Service worker not active yet. Try refreshing the page!');
-            }
+            // Show the raw JSON code on screen
+            output.value = JSON.stringify(subscription, null, 2);
         });
     </script>
 </body>
